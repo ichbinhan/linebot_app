@@ -12,38 +12,17 @@ from linebot.models import (
     StickerMessage,
 )
 from crawler.main import get_lottory, get_big_lottory
-from crawler.train import get_stations, get_train_data2
 
 line_bot_api = LineBotApi(settings.LINE_CHANNEL_ACCESS_TOKEN)
 parse = WebhookParser(settings.LINE_CHANNEL_SECRET)
-menu_str = ""
-temp_str = ""
-stations = {}
 
 
 def index(request):
     return HttpResponse("chatbot v1.0")
 
 
-def get_menu():
-    global menu_str, stations
-    if menu_str == "":
-        stations = get_stations()
-        menu = {i + 1: station for i, station in enumerate(stations)}
-        count = 0
-        for k, v in menu.items():
-            menu_str += "{:2}{:4}".format(k, v)
-            count += 1
-            if count % 4 == 0:
-                menu_str += "\n"
-
-
 @csrf_exempt
 def callback(request):
-    global menu_str, stations
-    get_menu()
-    print(menu_str)
-
     if request.method == "POST":
         signature = request.META["HTTP_X_LINE_SIGNATURE"]
         body = request.body.decode("utf-8")
@@ -58,16 +37,34 @@ def callback(request):
                 text = event.message.text
                 print(text)
                 if text == "1":
-                    text = menu_str
+                    message = TextSendMessage(text="早安")
+                elif text == "2":
+                    message = TextSendMessage(text="午安")
+                elif "樂透" in text:
+                    numbers = get_big_lottory()
+                    message = TextSendMessage(text=numbers)
+                elif "捷運" in text:
+                    # 練習(台北/台中/高雄捷運圖)
+                    if "台中" in text:
+                        image_url = "https://assets.piliapp.com/s3pxy/mrt_taiwan/taichung/20201112_zh.png?v=2"
+                    elif "高雄" in text:
+                        image_url = "https://assets.piliapp.com/s3pxy/mrt_taiwan/kaohsiung/202210_zh.png"
+                    else:
+                        image_url = "https://assets.piliapp.com/s3pxy/mrt_taiwan/taipei/20230214_zh.png"
 
-                if text == "2":
-                    # 1000-台北
-                    text = get_train_data2(
-                        stations["臺北"], stations["基隆"], "2023/09/10", "12:00", "23:59"
+                    message = ImageSendMessage(
+                        original_content_url=image_url, preview_image_url=image_url
                     )
-                    print(text)
 
-                message = TextSendMessage(text=text)
+                elif "台北車站" in text:
+                    message = LocationSendMessage(
+                        title="台北車站",
+                        address="100台北市中正區北平西路3號1樓",
+                        latitude=25.047778,
+                        longitude=121.517222,
+                    )
+                else:
+                    message = TextSendMessage(text="我不知道你在說甚麼?")
 
                 try:
                     line_bot_api.reply_message(event.reply_token, message)

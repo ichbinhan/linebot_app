@@ -16,11 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from bot.views import callback,index
+from bot.views import callback, index
 from django.urls import re_path as url
 
 urlpatterns = [
     url("^callback", callback),
-    path("",index),
+    path("", index),
     path("admin/", admin.site.urls),
 ]
